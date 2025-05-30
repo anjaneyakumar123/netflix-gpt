@@ -1,14 +1,72 @@
-// Header.js
-import React from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "../utils/firebase";
+import { addUser, removeUser } from "../utils/userSlice";
+import { LOGO } from "../utils/constants";
+import { useEffect } from "react";
+//import { useEffect } from "react";
 
 const Header = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // Grab user info from Redux store
+  const user = useSelector((state) => state.user);
+
+
+  const handleSignOut = () => {
+    signOut(auth)
+      .then(() => {
+        dispatch(removeUser());
+      })
+      .catch(() => {
+        navigate("/error");
+      });
+  };
+
+   useEffect(() => {
+    const unSubscribe=onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const { uid, email, displayName, photoURL } = user;
+        dispatch(
+          addUser({
+            uid: uid,
+            email: email,
+            displayName: displayName,
+            photoURL: photoURL,
+          })
+        );
+        navigate("/browse");
+      } else {
+        dispatch(removeUser());
+        navigate("/");
+      }
+    });
+    return () => unSubscribe();
+  }, []);
+
   return (
-    <div className="absolute px-8 py-2 bg-gradient-to-b from-black flex items-center justify-between z-10">
-      <img
-        src="https://help.nflxext.com/helpcenter/OneTrust/oneTrust_production/consent/87b6a5c0-0104-4e96-a291-092c11350111/01938dc4-59b3-7bbc-b635-c4131030e85f/logos/dd6b162f-1a32-456a-9cfe-897231c7763c/4345ea78-053c-46d2-b11e-09adaef973dc/Netflix_Logo_PMS.png"
-        alt="Netflix Logo"
-        className="w-44 top-4 left-4 z-50"
-      />
+    <div className="absolute w-screen px-8 bg-gradient-to-b from-black z-10 flex flex-col md:flex-row justify-between ">
+      <img className="w-44 mx-auto md:mx-0" src={LOGO} alt="logo" />
+     {user === null ? (
+      <p className="text-white">Loading...</p>
+    ) : user?.photoURL ? (
+      <div className="flex items-center space-x-4">
+        <img
+          className="md:block w-12 h-12 rounded-full"
+          alt="User Avatar"
+          src={user.photoURL}
+        />
+        <button
+          onClick={handleSignOut}
+          className="font-bold text-white hover:underline"
+        >
+          (Sign Out)
+        </button>
+      </div>
+    ) : null}
+
     </div>
   );
 };
